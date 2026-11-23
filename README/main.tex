@@ -665,9 +665,80 @@ Comunicação & HTTPS & Comunicação criptografada entre cliente e servidor \\
 
 \chapter{Desenvolvimento}
 
-(Descrever o processo de construção do sistema proposto.
-Descrever as tecnologias utilizadas para o desenvolvimento do sistema. Como o sis-
-tema foi modularizado. Indicar se alguma documentação poderia sofrer modificação.)
+O desenvolvimento da plataforma \textbf{TrampoRápido} seguiu uma abordagem iterativa e incremental, alinhada aos princípios de Engenharia de Software descritos nas etapas iniciais do projeto[cite: 1, 3]. Todo o código-fonte foi versionado de forma distribuída no GitHub[cite: 2, 3, 7], permitindo o trabalho paralelo entre os integrantes da equipe nas frentes de interface de usuário, serviços de domínio e infraestrutura de entrega contínua[cite: 1, 2, 3].
+
+\section{Processo de construção e esteira CI/CD}
+
+A construção do sistema partiu da definição dos contratos de comunicação entre o cliente web e os microsserviços[cite: 1, 2, 3]. Inicialmente, foram estruturados os modelos de domínio e as interfaces de programação (APIs REST) de forma desacoplada, permitindo que o desenvolvimento do frontend evoluísse em paralelo por meio de protótipos navegáveis e integração progressiva com os endpoints reais[cite: 1, 3].
+
+Para garantir a qualidade do código e automatizar o ciclo de entrega, implementou-se uma esteira de Integração Contínua e Entrega Contínua (CI/CD) baseada em \textbf{Jenkins} (via arquivos \texttt{Jenkinsfile}) e fluxos de automação do GitHub Actions (\texttt{jenkins-ci-cd.yml})[cite: 1, 2, 3]. Em cada repositório, o pipeline automatiza as seguintes etapas:
+
+\begin{enumerate}
+    \item \textbf{Build e Resolução de Dependências:} Compilação dos projetos Java com Apache Maven (\texttt{mvnw}) e construção da aplicação web com Node.js/npm[cite: 2, 3].
+    \item \textbf{Execução de Testes Automatizados:} Execução de testes unitários e de integração nos serviços de backend (como \texttt{RegisterUserUseCaseTest}, \texttt{AuthIntegrationTest}, \texttt{TaskServiceTest} e testes de controladores REST) para validação das regras de negócio antes da geração de artefatos[cite: 2, 3].
+    \item \textbf{Empacotamento em Contêineres:} Geração de imagens Docker isoladas para cada serviço (\texttt{Dockerfile}) e orquestração local de dependências por meio do Docker Compose (\texttt{compose.yaml})[cite: 2, 3].
+    \item \textbf{Implantação (Deploy):} Publicação automatizada dos artefatos empacotados nas instâncias de computação em nuvem na AWS[cite: 1, 2, 3].
+\end{enumerate}
+
+\section{Tecnologias utilizadas na implementação}
+
+Durante a fase de codificação, a stack tecnológica planejada na arquitetura foi consolidada e refinada para atender aos requisitos de leveza, segurança e manutenibilidade[cite: 1, 2, 3]. A Tabela~\ref{tab:tecnologias_dev} sintetiza as ferramentas efetivamente empregadas em cada camada.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\textwidth}{@{} >{\raggedright\arraybackslash}p{3.2cm} >{\raggedright\arraybackslash}p{4cm} L @{}}
+\toprule
+\textbf{Camada} & \textbf{Tecnologia / Biblioteca} & \textbf{Aplicação no Projeto} \\
+\midrule
+Frontend & Next.js (App Router), React e TypeScript & Construção da interface web responsiva, roteamento dinâmico de vagas e gerenciamento de estado de sessão[cite: 3]. \\
+\hline
+Estilização & Tailwind CSS e CSS Modules & Criação de componentes visuais leves e adaptáveis a dispositivos móveis[cite: 3]. \\
+\hline
+Backend & Java e Spring Boot & Implementação das APIs RESTful dos serviços de Usuários e Oportunidades[cite: 1, 2, 3]. \\
+\hline
+Segurança e Sessão & Spring Security e JWT & Autenticação baseada em tokens (JWT), filtros de validação de sessão e controle de acesso por papéis[cite: 2, 3]. \\
+\hline
+Persistência & Spring Data JPA e PostgreSQL & Mapeamento objeto-relacional, armazenamento de entidades e persistência de currículos em formato JSON[cite: 2, 3]. \\
+\hline
+Testes & JUnit, Spring Test e Postman & Testes automatizados de casos de uso/integração e validação manual de contratos HTTP[cite: 1, 2, 3]. \\
+\hline
+DevOps e Cloud & Docker, Jenkins, GitHub e AWS & Conteinerização, pipelines de CI/CD e hospedagem em nuvem[cite: 1, 2, 3]. \\
+\bottomrule
+\end{tabularx}
+\caption{Tecnologias e bibliotecas utilizadas durante o desenvolvimento.}
+\label{tab:tecnologias_dev}
+\end{table}
+
+\section{Modularização do sistema}
+
+O sistema foi modularizado em três repositórios independentes, separando claramente a camada de apresentação dos domínios de negócio[cite: 2, 3]:
+
+\begin{itemize}
+    \item \textbf{Frontend (\texttt{tramporapido-ui}):} Estruturado com base no padrão \textit{App Router} do Next.js (\texttt{src/app})[cite: 3]. As rotas foram organizadas por domínio funcional: autenticação (\texttt{/login}, \texttt{/register}), gestão de currículo (\texttt{/resume}), listagem e detalhamento de oportunidades (\texttt{/jobs}, \texttt{/jobs/[id]}), publicação de vagas (\texttt{/jobs/register}), acompanhamento de candidaturas (\texttt{/applications}) e canal de dúvidas por vaga (\texttt{/jobs/[id]/duvidas})[cite: 3]. Componentes reutilizáveis (como \texttt{Header} e \texttt{CandidateSidebar}) foram isolados em \texttt{src/components}, enquanto a comunicação HTTP e o controle de sessão foram centralizados em \texttt{src/lib/api.ts} e \texttt{src/lib/use-session.ts}[cite: 3].
+
+    \item \textbf{Serviço de Usuários (\texttt{user-service}):} Desenvolvido segundo os princípios da \textbf{Arquitetura Hexagonal (Ports and Adapters)}[cite: 2]. O núcleo da aplicação foi dividido em:
+    \begin{itemize}
+        \item \texttt{domain}: modelos centrais (\texttt{User}, \texttt{Resume} e \texttt{Role}) livres de dependências de frameworks[cite: 2];
+        \item \texttt{port}: interfaces de entrada (\texttt{RegisterUserUseCase}, \texttt{AuthenticateUserUseCase}, \texttt{GetUserProfileUseCase}) e portas de saída (\texttt{UserRepositoryPort}, \texttt{TokenProviderPort}, \texttt{PasswordEncoderPort})[cite: 2];
+        \item \texttt{application}: implementações dos casos de uso e exceções de domínio (\texttt{EmailAlreadyExistsException}, \texttt{InvalidCredentialsException})[cite: 2];
+        \item \texttt{adapter}: adaptadores de entrada REST (\texttt{AuthController}, \texttt{RegisterController}, \texttt{UserController}, \texttt{ResumeProfileController}) e adaptadores de saída para persistência e geração de tokens JWT[cite: 2];
+        \item \texttt{infra}: configurações do Spring Security (\texttt{JwtAuthenticationFilter}), tratamento global de exceções (\texttt{GlobalExceptionHandler}) e conversores de persistência (\texttt{ResumeJsonConverter})[cite: 2].
+    \end{itemize}
+
+    \item \textbf{Serviço de Oportunidades (\texttt{task-service}):} Também estruturado sob o padrão de adaptadores de entrada e saída (\texttt{adapters/inbound} e \texttt{adapters/outbound})[cite: 3]. Concentra o gerenciamento das vagas (\texttt{TaskController}, \texttt{TaskService}, \texttt{TaskEntity}), o fluxo de candidaturas (\texttt{ApplicationController}, \texttt{ApplicationService}, \texttt{ApplicationEntity}) e o fórum de perguntas entre candidatos e contratantes (\texttt{DuvidaVagaController}, \texttt{DuvidaVagaService}, \texttt{DuvidaVagaEntity})[cite: 3]. A validação de identidade nas requisições é realizada pelo filtro \texttt{SessionAuthenticationFilter}, que verifica o token de sessão do usuário autenticado[cite: 3].
+\end{itemize}
+
+\section{Evolução e ajustes na documentação}
+
+Durante o desenvolvimento, identificou-se que alguns artefatos da documentação inicial (elaborados na etapa N1) poderiam sofrer atualizações para refletir com maior precisão as decisões técnicas tomadas na implementação[cite: 1, 2, 3, 8]:
+
+\begin{itemize}
+    \item \textbf{Stack de Frontend e Gerenciamento de Sessão:} Na especificação arquitetural inicial, previu-se uma SPA em React puro servida estaticamente via Nginx e sessões tradicionais gerenciadas diretamente pelo Spring Security[cite: 1]. Na prática, adotou-se o framework \textbf{Next.js} com TypeScript para estruturar as rotas e a renderização da interface[cite: 3], e implementou-se autenticação \textit{stateless} baseada em tokens \textbf{JWT} (\texttt{JwtTokenProviderAdapter} e \texttt{SessionAuthenticationFilter}) para facilitar a comunicação entre os dois microsserviços[cite: 2, 3].
+    \item \textbf{Inclusão do Módulo de Dúvidas sobre Vagas:} Durante a implementação do \texttt{task-service} e da interface web, incorporou-se a funcionalidade de perguntas e respostas vinculadas a cada oportunidade (\texttt{DuvidaVagaController} e rota \texttt{/jobs/[id]/duvidas}), permitindo que moradores esclareçam detalhes do serviço antes de efetivar a candidatura[cite: 3]. Esse fluxo pode ser adicionado ao Diagrama de Casos de Uso e à tabela de Requisitos Funcionais[cite: 1, 3].
+    \item \textbf{Persistência de Currículos:} No modelo de domínio inicial, os dados curriculares foram concebidos de forma relacional tradicional[cite: 1]; na implementação do \texttt{user-service}, optou-se por armazenar a estrutura flexível de habilidades, escolaridade e experiências por meio de serialização JSON (\texttt{ResumeJsonConverter} em \texttt{ResumeProfileEntity}), o que demandaria atualização no diagrama físico de banco de dados[cite: 1, 2].
+\end{itemize}
+
 
 % --------------------------- RESULTADOS ----------------------------
 
@@ -683,9 +754,29 @@ da aplicação no repositório.)
 
 \chapter{Conclusão e Trabalhos Futuros}
 
-{Escrever a conclusão do projeto, revisando
-os pontos principais descritos até essa seção. Apontar quais melhorias no sistema
-poderiam ser exploradas em trabalhos futuros. Apontar trabalhos futuros que podem
-ser derivados do sistema proposto.}
+O desenvolvimento do projeto \textbf{TrampoRápido} permitiu aplicar, de forma prática e colaborativa, os conceitos fundamentais da Engenharia de Software — desde a elicitação de requisitos orientada a uma demanda socioeconômica real até a arquitetura distribuída, implementação, testes automatizados e implantação em nuvem[cite: 1, 3, 6, 7]. A plataforma atingiu o objetivo de oferecer uma solução web funcional, responsiva e de baixa carga cognitiva para conectar trabalhadores locais e pequenos comerciantes de bairro, combatendo os custos de deslocamento e a exclusão digital[cite: 1, 3, 7].
+
+Ao longo das etapas do projeto, consolidou-se uma arquitetura desacoplada composta pelo frontend em Next.js e dois microsserviços em Java com Spring Boot (\texttt{user-service} e \texttt{task-service}), apoiados por práticas de Arquitetura Hexagonal, autenticação segura via JWT, conteinerização com Docker e automação de entrega contínua via Jenkins[cite: 1, 2, 3]. A separação clara de responsabilidades entre os módulos demonstrou-se eficaz para facilitar a manutenção, a testabilidade e a evolução independente de cada parte do sistema[cite: 2, 3].
+
+\section{Melhorias no sistema atual}
+
+Como oportunidades de aprimoramento direto sobre a versão atual da plataforma, destacam-se:
+
+\begin{itemize}
+    \item \textbf{Refinamento do Algoritmo de Geolocalização e Mapas Interativos:} Evoluir o cálculo de distância por raio (até 5 km) para considerar rotas reais de deslocamento a pé ou transporte público por meio da integração com APIs de mapas e geocodificação automática a partir do CEP ou endereço do usuário[cite: 1].
+    \item \textbf{Expansão do Painel das Sedes Intermediadoras:} Aprimorar os fluxos administrativos destinados a escolas públicas, ONGs e associações comunitárias, incluindo relatórios de impacto local, emissão de comprovantes de inscrição impressos/PDF para cidadãos sem smartphone e auditoria detalhada dos cadastros intermediados[cite: 1].
+    \item \textbf{Notificações em Tempo Real:} Implementar alertas via WhatsApp, SMS ou notificações \textit{push} sempre que uma candidatura for aceita, uma dúvida na vaga for respondida ou uma nova oportunidade surgir dentro do raio configurado pelo trabalhador[cite: 1, 3].
+    \item \textbf{Sistema de Reputação e Avaliações Comunitárias:} Adicionar um mecanismo simples de avaliação mútua após a conclusão de serviços autônomos, aumentando a confiança entre moradores e pequenos contratantes da vizinhança[cite: 1].
+\end{itemize}
+
+\section{Trabalhos futuros derivados}
+
+A partir da arquitetura e do propósito extensionista do \textbf{TrampoRápido}, vislumbram-se os seguintes desdobramentos futuros:
+
+\begin{itemize}
+    \item \textbf{Aplicativo Móvel Híbrido ou Progressive Web App (PWA) Offline-First:} Desenvolver uma versão instalável com suporte a cache local e sincronização assíncrona, permitindo que moradores em áreas com cobertura de internet intermitente naveguem pelas vagas carregadas previamente e enviem candidaturas assim que restabelecerem conexão[cite: 1].
+    \item \textbf{Integração com Políticas Públicas e Economia Solidária:} Adaptar a plataforma para atuar em parceria com prefeituras, Centros de Referência de Assistência Social (CRAS) e programas municipais de geração de renda, fornecendo indicadores socioeconômicos anonimizados sobre oferta e demanda de mão de obra por bairro[cite: 1].
+    \item \textbf{Módulo de Microcapacitação Comunitária:} Integrar trilhas curtas de qualificação profissional e educação financeira (como formalização via MEI e precificação de serviços) diretamente no perfil do trabalhador, conectando as oportunidades locais à capacitação técnica ofertada pelas próprias sedes parceiras[cite: 1].
+\end{itemize}
 
 \end{document}
